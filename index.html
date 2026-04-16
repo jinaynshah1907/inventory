@@ -1,0 +1,2004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NimeshMotors Inventory</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- QR Code Generator (for Payments) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    
+    <!-- Google Generative AI SDK -->
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/generative-ai": "https://esm.run/@google/generative-ai"
+        }
+      }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: #e2e8f0;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .stock-badge-low { background-color: #ef4444; color: white; }
+        .stock-badge-good { background-color: #22c55e; color: white; }
+        .stock-badge-med { background-color: #eab308; color: black; }
+
+        /* AI Action Pulse */
+        @keyframes pulse-purple {
+            0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(168, 85, 247, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+        }
+        .ai-action-active {
+            animation: pulse-purple 2s infinite;
+            border-color: #a855f7;
+        }
+
+        /* Scheduled Notification Slide-in */
+        @keyframes slide-in-right {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in {
+            animation: slide-in-right 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        /* Google Translate Customization */
+        .goog-te-banner-frame.skiptranslate { display: none !important; } 
+        body { top: 0px !important; }
+        .goog-te-gadget-icon { display: none !important; }
+        .goog-te-gadget-simple {
+            background-color: #1e293b !important;
+            border: 1px solid #334155 !important;
+            padding: 10px 12px !important;
+            border-radius: 0.5rem !important;
+            color: #fff !important;
+            width: 100%;
+            display: flex !important;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .goog-te-menu-value { color: #e2e8f0 !important; }
+        .goog-te-menu-value span { color: #e2e8f0 !important; border: none !important; }
+        .goog-te-menu-value span:last-child { display: none; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-slate-900 border-b border-slate-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <!-- Logo Container -->
+                    <div id="logo-container" onclick="openLogoModal()" class="bg-white p-1 rounded-lg h-10 w-auto flex items-center justify-center shadow-lg shadow-blue-900/20 hidden cursor-pointer hover:scale-105 transition-transform duration-200">
+                        <img id="shop-logo" src="" alt="Shop Logo" class="h-full w-auto object-contain">
+                    </div>
+                    <!-- Default Icon -->
+                    <div id="default-logo-icon" class="bg-blue-600 p-2 rounded-lg">
+                        <i class="fa-solid fa-car-battery text-white text-xl"></i>
+                    </div>
+                    
+                    <span class="font-bold text-xl tracking-tight text-white">NimeshMotors <span class="text-blue-500">Inventory</span></span>
+                </div>
+                <div class="flex items-center gap-2 sm:gap-4">
+                    <button onclick="openPosModal()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-medium transition flex items-center gap-2 shadow-lg shadow-green-500/20">
+                        <i class="fa-solid fa-cash-register"></i> <span class="hidden sm:inline">Sell</span>
+                    </button>
+                    <!-- New Notification Bell -->
+                    <button onclick="openNotificationModal()" class="relative text-slate-400 hover:text-white transition p-1">
+                        <i class="fa-solid fa-bell text-xl"></i>
+                        <span id="nav-alert-badge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-slate-900 animate-bounce">0</span>
+                    </button>
+                    <button onclick="openHistoryModal()" class="text-slate-400 hover:text-white transition" title="Sales History">
+                        <i class="fa-solid fa-clock-rotate-left text-xl"></i>
+                    </button>
+                    <button onclick="toggleSettings()" class="text-slate-400 hover:text-white transition flex items-center gap-2">
+                        <i class="fa-solid fa-gear text-lg"></i>
+                    </button>
+                    <button onclick="openAddModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 shadow-lg shadow-blue-500/20">
+                        <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Add</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
+        
+        <!-- Scheduled Report Notification -->
+        <div id="scheduled-alert" class="hidden absolute top-4 right-4 z-40 bg-slate-800 border border-purple-500 shadow-2xl shadow-purple-500/20 rounded-xl p-4 w-80 slide-in">
+            <div class="flex items-start gap-3">
+                <div class="bg-purple-600 p-2 rounded-lg text-white">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+                <div class="flex-grow">
+                    <h4 class="font-bold text-white text-sm">Daily Report Ready</h4>
+                    <p class="text-slate-400 text-xs mt-1">It's scheduled time! Send your inventory summary now.</p>
+                    <div class="mt-3 flex gap-2">
+                        <button onclick="sendScheduledReport()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-2 rounded-lg font-bold flex-1">
+                            Send Now <i class="fa-solid fa-paper-plane ml-1"></i>
+                        </button>
+                        <button onclick="dismissScheduledAlert()" class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-2 rounded-lg">
+                            Later
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Left Column: Stats & Inventory List -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Stats Row -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <p class="text-slate-400 text-sm">Total Parts</p>
+                        <h3 class="text-2xl font-bold text-white" id="stat-total">0</h3>
+                    </div>
+                    <div class="bg-slate-800 p-3 rounded-lg text-blue-400">
+                        <i class="fa-solid fa-boxes-stacked text-xl"></i>
+                    </div>
+                </div>
+                
+                <div class="glass-panel p-4 rounded-xl flex items-center justify-between relative group cursor-pointer border-red-500/30">
+                    <div>
+                        <p class="text-slate-400 text-sm">Low Stock Alerts</p>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-2xl font-bold text-red-400" id="stat-low">0</h3>
+                            <button onclick="sendLowStockAlert()" title="Send SMS Alert" class="hidden group-hover:flex bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded items-center gap-1 transition animate-pulse">
+                                <i class="fa-solid fa-paper-plane"></i> Alert
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800 p-3 rounded-lg text-red-400">
+                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-4 rounded-xl flex items-center justify-between cursor-pointer hover:bg-slate-800/80 transition" onclick="openAnalyticsModal()">
+                    <div>
+                        <p class="text-slate-400 text-sm">Inventory Value</p>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-2xl font-bold text-green-400" id="stat-value">₹0</h3>
+                            <span class="text-[10px] bg-slate-700 px-1.5 rounded text-slate-300">View Charts</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800 p-3 rounded-lg text-green-400">
+                        <i class="fa-solid fa-chart-pie text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search & Filter -->
+            <div class="flex flex-col sm:flex-row gap-4">
+                <div class="relative flex-grow">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-500"></i>
+                    <input type="text" id="search-input" placeholder="Search parts, company..." 
+                        class="w-full bg-slate-800 border border-slate-700 text-white pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 transition">
+                </div>
+                <select id="category-filter" class="bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">All Categories</option>
+                    <option value="Brakes">Brakes</option>
+                    <option value="Engine">Engine</option>
+                    <option value="Suspension">Suspension</option>
+                    <option value="Electrical">Electrical</option>
+                    <option value="Body">Body</option>
+                </select>
+            </div>
+
+            <!-- Inventory List -->
+            <div class="glass-panel rounded-xl overflow-hidden min-h-[400px]">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-800 text-slate-400 text-xs uppercase tracking-wider">
+                            <tr>
+                                <th class="p-4">Part Name</th>
+                                <th class="p-4">Company</th>
+                                <th class="p-4">Category</th>
+                                <th class="p-4 text-center">Stock</th>
+                                <th class="p-4 text-right">Price (₹)</th>
+                                <th class="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body" class="divide-y divide-slate-700 text-sm">
+                            <!-- Items will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="empty-state" class="hidden flex-col items-center justify-center py-12 text-slate-500">
+                    <i class="fa-solid fa-box-open text-4xl mb-3"></i>
+                    <p>No parts found in inventory.</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: AI Assistant -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- AI Panel -->
+            <div id="ai-panel" class="glass-panel rounded-xl p-6 flex flex-col h-full relative overflow-hidden transition-all duration-300">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+                
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-robot text-purple-400"></i> AI Assistant
+                    </h2>
+                    <span class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-400 border border-slate-700">Gemini Powered</span>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex p-1 bg-slate-800 rounded-lg mb-4">
+                    <button onclick="switchAiTab('chat')" id="tab-chat" class="flex-1 py-1.5 text-sm rounded-md bg-slate-700 text-white shadow-sm transition">Chat</button>
+                    <button onclick="switchAiTab('add')" id="tab-add" class="flex-1 py-1.5 text-sm rounded-md text-slate-400 hover:text-white transition">Magic Add</button>
+                </div>
+
+                <!-- Chat View -->
+                <div id="ai-view-chat" class="flex-grow flex flex-col h-[500px]">
+                    <div id="chat-history" class="flex-grow overflow-y-auto space-y-3 mb-3 pr-2 text-sm">
+                        <div class="bg-slate-800 p-3 rounded-lg rounded-tl-none border border-slate-700">
+                            <p class="text-slate-300">Hello! I monitor your stock. Ask me "How much is inventory worth?" or "Find items under 500 rupees".</p>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <textarea id="chat-input" placeholder="Give me a command..." class="w-full bg-slate-900 border border-slate-700 text-white pl-3 pr-10 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none h-12 text-sm" onkeydown="handleChatEnter(event)"></textarea>
+                        <button onclick="sendChat()" class="absolute right-2 top-2 p-1.5 text-purple-400 hover:text-white transition">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Magic Add View -->
+                <div id="ai-view-add" class="hidden flex-grow flex flex-col h-[500px]">
+                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700 mb-4 text-sm text-slate-300">
+                        <p class="mb-2 font-semibold text-white">Paste invoice or speak naturally:</p>
+                        <p class="italic text-slate-400">"Added 20 Bosch Wiper Blades at 450 rupees each."</p>
+                    </div>
+                    <textarea id="magic-input" placeholder="Type details here..." class="flex-grow w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none mb-3 font-mono text-sm"></textarea>
+                    <button onclick="processMagicAdd()" id="magic-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-medium transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Process & Add
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modals -->
+
+    <!-- Logo Enlarge Modal -->
+    <div id="logo-modal" class="fixed inset-0 z-[60] hidden" onclick="closeLogoModal()">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-4 w-full max-w-3xl flex justify-center">
+            <img id="modal-logo-img" src="" onclick="event.stopPropagation()" class="max-h-[80vh] max-w-full object-contain rounded-xl shadow-2xl bg-white p-2">
+        </div>
+        <button onclick="closeLogoModal()" class="absolute top-6 right-6 text-white/70 hover:text-white transition">
+            <i class="fa-solid fa-xmark text-4xl"></i>
+        </button>
+    </div>
+
+    <!-- Notification Queue Modal -->
+    <div id="notification-modal" class="fixed inset-0 z-[70] hidden">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeNotificationModal()"></div>
+        <div class="absolute top-16 right-4 sm:right-20 w-80 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-slate-700 bg-slate-800 flex justify-between items-center">
+                <h3 class="font-bold text-white"><i class="fa-solid fa-bell text-red-500 mr-2"></i> Pending Alerts</h3>
+                <button onclick="closeNotificationModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="notification-list" class="max-h-64 overflow-y-auto p-4 space-y-3">
+                <!-- Notifications injected here -->
+                <p class="text-slate-500 text-sm text-center">No pending alerts.</p>
+            </div>
+            <div class="p-4 border-t border-slate-700 bg-slate-800/50">
+                <button onclick="sendQueuedAlerts()" id="btn-send-queue" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-sm font-bold transition opacity-50 cursor-not-allowed" disabled>
+                    Send All to Owner
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales History Modal -->
+    <div id="history-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeHistoryModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-700 w-full max-w-5xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+                <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800">
+                    <div>
+                        <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-receipt mr-2 text-purple-500"></i> Sales History</h2>
+                        <p class="text-slate-400 text-sm mt-1">Track past invoices & tokens</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="bg-slate-900 px-3 py-1 rounded border border-slate-600">
+                            <span class="text-xs text-slate-400 block">Today's Sales</span>
+                            <span class="text-green-400 font-bold" id="history-today-total">₹0</span>
+                        </div>
+                        <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    </div>
+                </div>
+                
+                <div class="p-4 border-b border-slate-700 bg-slate-900/50">
+                    <input type="text" id="history-search" placeholder="Search by Invoice No, Token, or Customer..." oninput="renderHistoryTable(this.value)" class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-slate-500">
+                </div>
+
+                <div class="flex-grow overflow-auto p-4">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-800 text-slate-400 text-xs uppercase sticky top-0">
+                            <tr>
+                                <th class="p-4 rounded-tl-lg">Info</th>
+                                <th class="p-4">Customer</th>
+                                <th class="p-4">Items</th>
+                                <th class="p-4 text-right">Total</th>
+                                <th class="p-4">Payment</th>
+                                <th class="p-4 text-center rounded-tr-lg">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-slate-800 text-sm">
+                            <!-- Rows injected by JS -->
+                        </tbody>
+                    </table>
+                    <div id="history-empty" class="hidden flex-col items-center justify-center py-12 text-slate-500">
+                        <i class="fa-solid fa-file-invoice text-4xl mb-3"></i>
+                        <p>No sales records found.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- POS Modal (Billing) -->
+    <div id="pos-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-700 w-full max-w-5xl h-[85vh] rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden">
+                <!-- Product List -->
+                <div class="w-full md:w-2/3 p-6 border-r border-slate-700 flex flex-col">
+                    <h2 class="text-xl font-bold text-white mb-4"><i class="fa-solid fa-cart-plus mr-2 text-green-500"></i> New Sale</h2>
+                    <input type="text" id="pos-search" placeholder="Search product to add..." oninput="renderPosProducts(this.value)" class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-lg mb-4 focus:ring-2 focus:ring-green-500 focus:outline-none">
+                    <div class="flex-grow overflow-y-auto">
+                        <div id="pos-product-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <!-- Products injected here -->
+                        </div>
+                    </div>
+                </div>
+                <!-- Cart -->
+                <div class="w-full md:w-1/3 p-6 bg-slate-800/50 flex flex-col">
+                    <h3 class="font-bold text-white mb-4">Current Bill</h3>
+                    
+                    <!-- Customer Details -->
+                    <div class="mb-4 bg-slate-900 p-3 rounded border border-slate-700 space-y-2">
+                        <input type="tel" id="pos-customer-phone" placeholder="Customer Mobile (for Bill)" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500">
+                        <input type="email" id="pos-customer-email" placeholder="Customer Email (Optional)" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500">
+                        <input type="text" id="pos-customer-name" placeholder="Customer Name (Optional)" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500">
+                    </div>
+
+                    <div id="pos-cart-items" class="flex-grow overflow-y-auto space-y-2 mb-4">
+                        <!-- Cart items here -->
+                        <div class="text-slate-500 text-center py-10 text-sm">Cart is empty</div>
+                    </div>
+                    <div class="border-t border-slate-700 pt-4 mt-auto">
+                        <!-- Payment Method Dropdown -->
+                        <div class="mb-4">
+                            <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Payment Method</label>
+                            <select id="pos-payment-method" onchange="togglePaymentInputs()" class="w-full bg-slate-900 border border-slate-700 text-white p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm mb-2">
+                                <option value="Cash">💵 Cash</option>
+                                <option value="UPI">📱 UPI (Scan & Pay)</option>
+                                <option value="Card">💳 Card (Swipe Machine)</option>
+                                <option value="Credit">📝 Credit / Udhaar</option>
+                            </select>
+                            
+                            <!-- Dynamic Payment Inputs -->
+                            <div id="card-details-input" class="hidden">
+                                <input type="text" id="pos-card-ref" placeholder="Enter Transaction/Auth No." class="w-full bg-slate-800 border border-slate-600 text-white p-2 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-slate-500">
+                                <p class="text-[10px] text-slate-500 mt-1">Swipe card on machine & enter slip number here.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-1 mb-4 text-sm">
+                            <div class="flex justify-between text-slate-400"><span>Subtotal:</span> <span id="pos-subtotal">₹0</span></div>
+                            <div class="flex justify-between text-slate-400"><span>GST (<span id="pos-gst-rate">0</span>%):</span> <span id="pos-gst-amount">₹0</span></div>
+                            <div class="flex justify-between text-xl font-bold text-white pt-2 border-t border-slate-700"><span>Total:</span> <span id="pos-total">₹0</span></div>
+                        </div>
+                        
+                        <button onclick="checkout()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold transition mb-2">Checkout & Send Bill</button>
+                        <button onclick="closePosModal()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-sm transition">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment QR Modal -->
+    <div id="payment-qr-modal" class="fixed inset-0 z-[70] hidden">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-sm"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-2xl p-6 shadow-2xl text-center">
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Scan to Pay</h3>
+            <p class="text-slate-600 text-sm mb-4">Use Paytm, GPay, or FamPay</p>
+            
+            <div class="flex justify-center mb-4">
+                <canvas id="upi-qr-canvas"></canvas>
+            </div>
+            
+            <h2 class="text-2xl font-bold text-slate-900 mb-6" id="qr-amount-display">₹0</h2>
+            
+            <button onclick="finalizeSale()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold transition mb-2">
+                Payment Received <i class="fa-solid fa-check ml-2"></i>
+            </button>
+            <button onclick="closePaymentQrModal()" class="w-full text-slate-500 hover:text-slate-800 py-2 text-sm">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Analytics Modal (Charts) -->
+    <div id="analytics-modal" class="fixed inset-0 z-[60] hidden" onclick="closeAnalyticsModal()">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-900 border border-slate-700 w-full max-w-4xl rounded-2xl p-6 shadow-2xl" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-chart-simple mr-2 text-blue-500"></i> Stock Analytics</h2>
+                <button onclick="closeAnalyticsModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-slate-800 p-4 rounded-xl">
+                    <h3 class="text-sm font-medium text-slate-300 mb-4 text-center">Stock by Category</h3>
+                    <div class="h-64 flex justify-center"><canvas id="chart-categories"></canvas></div>
+                </div>
+                <div class="bg-slate-800 p-4 rounded-xl">
+                    <h3 class="text-sm font-medium text-slate-300 mb-4 text-center">Value Distribution</h3>
+                    <div class="h-64 flex justify-center"><canvas id="chart-value"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="item-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl">
+            <h3 class="text-xl font-bold text-white mb-4" id="modal-title">Add New Part</h3>
+            <form id="item-form" onsubmit="handleFormSubmit(event)">
+                <input type="hidden" id="item-id">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Part Name</label>
+                        <input type="text" id="inp-name" required class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Company</label>
+                        <input type="text" id="inp-company" required class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Category</label>
+                        <select id="inp-category" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="Brakes">Brakes</option>
+                            <option value="Engine">Engine</option>
+                            <option value="Suspension">Suspension</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="Body">Body</option>
+                            <option value="Fluids">Fluids</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Quantity</label>
+                            <input type="number" id="inp-quantity" required min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Price (₹)</label>
+                            <input type="number" id="inp-price" required min="0" step="0.01" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold mt-2 transition">
+                        Save Part
+                    </button>
+                </div>
+            </form>
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="toggleSettings()"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h3 class="text-lg font-bold text-white mb-2">Settings</h3>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Gemini API Key</label>
+                <div class="relative">
+                    <input type="password" id="api-key-input" placeholder="AIzaSy..." class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none pr-10">
+                    <button onclick="toggleKeyVisibility()" class="absolute right-3 top-2.5 text-slate-500 hover:text-white">
+                        <i class="fa-solid fa-eye" id="eye-icon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Owner Phone Number</label>
+                <input type="tel" id="phone-input" autocomplete="off" name="custom_phone_field" placeholder="+91 9876543210" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Shop UPI ID (For Payments)</label>
+                <input type="text" id="upi-id-input" placeholder="e.g. nimeshmotors@okicici" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <p class="text-slate-500 text-xs mt-1">Needed to generate payment QR codes.</p>
+            </div>
+
+            <div class="flex gap-4 mb-4">
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Low Stock Limit</label>
+                    <input type="number" id="low-limit-input" value="5" min="1" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Default GST %</label>
+                    <input type="number" id="gst-rate-input" value="18" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- New Scheduled Time with Format Toggle -->
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="block text-xs font-medium text-slate-400 uppercase">Daily Report Time</label>
+                    <div class="flex bg-slate-800 rounded p-0.5 border border-slate-700">
+                        <button onclick="setTimeFormat('12')" id="btn-12h" class="text-[10px] px-2 py-0.5 rounded transition text-slate-400 hover:text-white">12h</button>
+                        <button onclick="setTimeFormat('24')" id="btn-24h" class="text-[10px] px-2 py-0.5 rounded transition bg-blue-600 text-white shadow-sm">24h</button>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2">
+                    <div class="relative flex-1">
+                        <select id="time-hour" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none cursor-pointer text-center">
+                            <!-- Hours populated by JS -->
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-2 top-3 text-xs text-slate-500 pointer-events-none"></i>
+                    </div>
+                    <span class="text-white py-2 font-bold">:</span>
+                    <div class="relative flex-1">
+                        <select id="time-minute" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none cursor-pointer text-center">
+                            <!-- Minutes populated by JS -->
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-2 top-3 text-xs text-slate-500 pointer-events-none"></i>
+                    </div>
+                    <div id="ampm-container" class="relative flex-1 hidden">
+                        <select id="time-ampm" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none cursor-pointer text-center">
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-2 top-3 text-xs text-slate-500 pointer-events-none"></i>
+                    </div>
+                </div>
+                <p class="text-slate-500 text-xs mt-1">App must be open to send alert.</p>
+            </div>
+
+            <!-- New Shop Logo Section -->
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Shop Logo</label>
+                <div class="flex items-center gap-3">
+                    <div id="settings-logo-preview" class="w-12 h-12 bg-white rounded-lg flex items-center justify-center overflow-hidden border border-slate-600">
+                        <i class="fa-solid fa-image text-slate-400"></i>
+                    </div>
+                    <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm border border-slate-600 transition">
+                        <span>Upload File</span>
+                        <input type="file" id="logo-upload" class="hidden" accept="image/*" onchange="handleLogoUpload(this)">
+                    </label>
+                </div>
+                <p class="text-slate-500 text-xs mt-1">Logo is saved locally to your browser.</p>
+            </div>
+
+            <!-- Language Settings Section -->
+            <div class="mb-6">
+                <label class="block text-xs font-medium text-slate-400 uppercase mb-1">App Language</label>
+                <div id="google_translate_element" class="w-full"></div>
+                <p class="text-slate-500 text-xs mt-1">Translate the entire app.</p>
+            </div>
+
+            <div class="border-t border-slate-700 pt-4 mb-4">
+                <label class="block text-xs font-medium text-slate-400 uppercase mb-2">Data Management</label>
+                <div class="grid grid-cols-2 gap-3 mb-2">
+                    <button onclick="exportData()" class="bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-lg text-sm border border-slate-600 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-download"></i> Backup
+                    </button>
+                    <button onclick="triggerImport()" class="bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-lg text-sm border border-slate-600 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-upload"></i> Restore
+                    </button>
+                    <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(this)">
+                </div>
+                <!-- Excel Export -->
+                <button onclick="exportCSV()" class="w-full bg-green-900/50 hover:bg-green-800/50 border border-green-700 text-green-100 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-csv"></i> Export to Excel (CSV)
+                </button>
+            </div>
+
+            <button onclick="saveSettings()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium transition">
+                Save Settings
+            </button>
+        </div>
+    </div>
+
+    <!-- Logic -->
+    <script type="module">
+        import { GoogleGenerativeAI } from "@google/generative-ai";
+
+        // --- State Management ---
+        let inventory = [];
+        let salesHistory = [];
+        let notificationQueue = []; 
+        let posCart = [];
+        let geminiKey = localStorage.getItem('autoSpare_geminiKey') || '';
+        let ownerPhone = localStorage.getItem('autoSpare_phone') || '';
+        let upiId = localStorage.getItem('autoSpare_upiId') || '';
+        let lowLimit = parseInt(localStorage.getItem('autoSpare_lowLimit')) || 5;
+        let gstRate = parseFloat(localStorage.getItem('autoSpare_gstRate')) || 18;
+        let reportTime = localStorage.getItem('autoSpare_reportTime') || ''; 
+        let timeFormat = localStorage.getItem('autoSpare_timeFormat') || '24'; 
+
+        // Initial Mock Data (If empty)
+        const initialData = [
+            { id: 1, name: "Ceramic Brake Pads", company: "Bosch", category: "Brakes", quantity: 12, price: 3500 },
+            { id: 2, name: "Oil Filter (Z9)", company: "Ryco", category: "Engine", quantity: 45, price: 450 },
+            { id: 3, name: "Spark Plug Iridium", company: "NGK", category: "Engine", quantity: 4, price: 850 },
+            { id: 4, name: "Headlight Bulb H7", company: "Philips", category: "Electrical", quantity: 24, price: 650 },
+            { id: 5, name: "Shock Absorber Rear", company: "Monroe", category: "Suspension", quantity: 2, price: 4200 }
+        ];
+
+        // --- Initialization ---
+        window.onload = () => {
+            loadInventory();
+            loadHistory();
+            renderTable();
+            updateStats();
+            
+            // Check for API key & Phone
+            if(geminiKey) document.getElementById('api-key-input').value = geminiKey;
+            if(ownerPhone) document.getElementById('phone-input').value = ownerPhone;
+            if(upiId) document.getElementById('upi-id-input').value = upiId;
+            document.getElementById('low-limit-input').value = lowLimit;
+            document.getElementById('gst-rate-input').value = gstRate;
+            
+            // Initialize Time UI
+            initTimeUI();
+
+            // Load Logo
+            loadLogo();
+
+            // Start Scheduler
+            setInterval(checkScheduledReport, 60000); // Check every minute
+            checkScheduledReport(); // Check immediately on load
+        };
+
+        // --- Notification Queue System ---
+        function addToNotificationQueue(item) {
+            // Check if already in queue to avoid duplicates
+            if(!notificationQueue.some(n => n.name === item.name)) {
+                notificationQueue.push(item);
+                updateNotificationIcon();
+            }
+        }
+
+        function updateNotificationIcon() {
+            const badge = document.getElementById('nav-alert-badge');
+            if (notificationQueue.length > 0) {
+                badge.innerText = notificationQueue.length;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        window.openNotificationModal = () => {
+            const list = document.getElementById('notification-list');
+            list.innerHTML = '';
+            
+            if (notificationQueue.length === 0) {
+                list.innerHTML = '<p class="text-slate-500 text-sm text-center py-4">No pending alerts.</p>';
+                document.getElementById('btn-send-queue').disabled = true;
+                document.getElementById('btn-send-queue').classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                notificationQueue.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-slate-800 p-3 rounded-lg border border-red-500/30 flex justify-between items-center';
+                    div.innerHTML = `
+                        <div>
+                            <p class="text-white font-bold text-sm">${item.name}</p>
+                            <p class="text-xs text-red-400">Stock: ${item.quantity} (Low)</p>
+                        </div>
+                        <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
+                    `;
+                    list.appendChild(div);
+                });
+                document.getElementById('btn-send-queue').disabled = false;
+                document.getElementById('btn-send-queue').classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            
+            document.getElementById('notification-modal').classList.remove('hidden');
+        }
+
+        window.closeNotificationModal = () => {
+            document.getElementById('notification-modal').classList.add('hidden');
+        }
+
+        window.sendQueuedAlerts = () => {
+            if(!ownerPhone) {
+                alert("Please set owner phone number in settings!");
+                return;
+            }
+            
+            let msg = `⚠️ *Low Stock Alert Summary* ⚠️\n\n`;
+            notificationQueue.forEach(item => {
+                msg += `• ${item.name}: Only ${item.quantity} left\n`;
+            });
+            msg += `\nPlease restock soon.`;
+            
+            const encodedMsg = encodeURIComponent(msg);
+            
+            // Detect mobile
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                 window.open(`sms:${ownerPhone}?body=${encodedMsg}`, '_blank');
+            } else {
+                 window.open(`https://wa.me/${ownerPhone.replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
+            }
+            
+            // Clear Queue
+            notificationQueue = [];
+            updateNotificationIcon();
+            closeNotificationModal();
+        }
+
+        // --- History Functions ---
+        function loadHistory() {
+            const stored = localStorage.getItem('autoSpare_salesHistory');
+            if (stored) {
+                salesHistory = JSON.parse(stored);
+            }
+        }
+
+        function saveHistory() {
+            localStorage.setItem('autoSpare_salesHistory', JSON.stringify(salesHistory));
+        }
+
+        window.openHistoryModal = () => {
+            renderHistoryTable();
+            document.getElementById('history-modal').classList.remove('hidden');
+        }
+
+        window.closeHistoryModal = () => {
+            document.getElementById('history-modal').classList.add('hidden');
+        }
+
+        window.renderHistoryTable = (query = '') => {
+            const tbody = document.getElementById('history-table-body');
+            const emptyState = document.getElementById('history-empty');
+            tbody.innerHTML = '';
+
+            // Calculate Today's Total
+            const today = new Date().toLocaleDateString();
+            const todayTotal = salesHistory
+                .filter(sale => new Date(sale.date).toLocaleDateString() === today)
+                .reduce((sum, sale) => sum + sale.total, 0);
+            document.getElementById('history-today-total').innerText = '₹' + todayTotal.toLocaleString('en-IN');
+
+            // Filter
+            const filtered = salesHistory.filter(sale => {
+                const q = query.toLowerCase();
+                return sale.customerName.toLowerCase().includes(q) || 
+                       sale.date.toLowerCase().includes(q) ||
+                       sale.invoiceNo.toLowerCase().includes(q) ||
+                       sale.total.toString().includes(q);
+            }).reverse(); // Show newest first
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            }
+            emptyState.classList.add('hidden');
+            emptyState.classList.remove('flex');
+
+            filtered.forEach(sale => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/50 transition';
+                
+                const dateObj = new Date(sale.date);
+                const dateStr = dateObj.toLocaleDateString() + ' <span class="text-xs text-slate-500">' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + '</span>';
+
+                tr.innerHTML = `
+                    <td class="p-4">
+                        <div class="text-white font-mono text-sm">${sale.invoiceNo}</div>
+                        <div class="text-[10px] text-green-400 bg-green-900/30 inline-block px-1 rounded mt-1">Token #${sale.tokenNo}</div>
+                        <div class="text-xs text-slate-500 mt-1">${dateStr}</div>
+                    </td>
+                    <td class="p-4 font-medium text-white">${sale.customerName}<div class="text-xs text-slate-500">${sale.customerPhone}</div></td>
+                    <td class="p-4 text-slate-400 text-xs">${sale.items.length} items<br><span title="${sale.items.map(i => i.name).join(', ')}" class="cursor-help underline decoration-dotted">View Items</span></td>
+                    <td class="p-4 text-right font-mono text-green-400 font-bold">₹${sale.total.toLocaleString('en-IN')}</td>
+                    <td class="p-4"><span class="bg-slate-800 px-2 py-1 rounded text-xs border border-slate-700">${sale.paymentMethod}</span></td>
+                    <td class="p-4 text-center">
+                        <button onclick='resendBill(${JSON.stringify(sale).replace(/'/g, "&#39;")})' class="text-blue-400 hover:text-blue-300 text-xs border border-blue-500/30 px-2 py-1 rounded hover:bg-blue-500/10 transition">
+                            <i class="fa-solid fa-share"></i> Resend
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.resendBill = (sale) => {
+            if(!sale) return;
+            const billText = generateBillText(sale);
+            
+            // Check if email or whatsapp
+            // If email exists in sale record, maybe ask user? For now default to Whatsapp/SMS re-send unless email requested
+            // Re-use logic from finalizeSale, but simpler
+            const encodedBill = encodeURIComponent(billText);
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const cleanPhone = sale.customerPhone.replace(/[^0-9]/g, '');
+            
+            if (isMobile) {
+                 window.open(`sms:${sale.customerPhone}?body=${encodedBill}`, '_blank');
+            } else {
+                 window.open(`https://wa.me/${cleanPhone}?text=${encodedBill}`, '_blank');
+            }
+        }
+
+        function generateBillText(sale) {
+            let bill = `🧾 *NIMESH MOTORS* 🧾\n\n`;
+            bill += `Hello ${sale.customerName},\nHere is your bill details:\n\n`;
+            bill += `🆔 Invoice: ${sale.invoiceNo}\n`;
+            bill += `🔢 Token: #${sale.tokenNo}\n`;
+            bill += `📅 Date: ${new Date(sale.date).toLocaleString()}\n`;
+            bill += `💳 Method: ${sale.paymentMethod}\n`;
+            bill += `---------------------------\n`;
+            
+            sale.items.forEach(i => {
+                bill += `${i.name} x${i.qty} = ₹${i.price * i.qty}\n`;
+            });
+            
+            // Calculate subtotal from total (reverse tax calculation for display if needed, but simple total is fine)
+            // Or if we stored breakdown we could show it. For simple text bill, Total is key.
+            
+            bill += `---------------------------\n`;
+            bill += `*TOTAL: ₹${sale.total.toLocaleString('en-IN')}*\n\n`;
+            bill += `Thank you for visiting! 🙏`;
+            return bill;
+        }
+
+        // --- POS (Point of Sale) Logic ---
+        window.openPosModal = () => {
+            posCart = [];
+            renderPosProducts();
+            renderPosCart();
+            document.getElementById('pos-gst-rate').innerText = gstRate;
+            document.getElementById('pos-modal').classList.remove('hidden');
+            togglePaymentInputs(); // Reset inputs
+        }
+
+        window.closePosModal = () => {
+            document.getElementById('pos-modal').classList.add('hidden');
+        }
+
+        window.togglePaymentInputs = () => {
+            const method = document.getElementById('pos-payment-method').value;
+            const cardInput = document.getElementById('card-details-input');
+            
+            if (method === 'Card') {
+                cardInput.classList.remove('hidden');
+            } else {
+                cardInput.classList.add('hidden');
+            }
+        }
+
+        window.renderPosProducts = (query = '') => {
+            const list = document.getElementById('pos-product-list');
+            list.innerHTML = '';
+            
+            const filtered = inventory.filter(item => {
+                const q = query.toLowerCase();
+                return (item.name.toLowerCase().includes(q) || 
+                        item.company.toLowerCase().includes(q)) && item.quantity > 0;
+            });
+
+            filtered.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'bg-slate-800 p-3 rounded-lg border border-slate-700 hover:border-green-500 cursor-pointer transition';
+                div.onclick = () => addToCart(item);
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <h4 class="font-bold text-white text-sm">${item.name}</h4>
+                        <span class="bg-slate-700 text-xs px-1.5 rounded text-white">${item.quantity}</span>
+                    </div>
+                    <p class="text-xs text-slate-400">${item.company}</p>
+                    <p class="text-green-400 font-mono font-bold mt-1">₹${item.price}</p>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        window.addToCart = (item) => {
+            const existing = posCart.find(c => c.id === item.id);
+            if(existing) {
+                if(existing.cartQty < item.quantity) {
+                    existing.cartQty++;
+                } else {
+                    alert("Not enough stock!");
+                }
+            } else {
+                posCart.push({ ...item, cartQty: 1 });
+            }
+            renderPosCart();
+        }
+
+        window.removeFromCart = (id) => {
+            posCart = posCart.filter(c => c.id !== id);
+            renderPosCart();
+        }
+
+        window.renderPosCart = () => {
+            const container = document.getElementById('pos-cart-items');
+            container.innerHTML = '';
+            let subtotal = 0;
+
+            if(posCart.length === 0) {
+                container.innerHTML = '<div class="text-slate-500 text-center py-10 text-sm">Cart is empty</div>';
+            } else {
+                posCart.forEach(item => {
+                    subtotal += item.price * item.cartQty;
+                    const div = document.createElement('div');
+                    div.className = 'bg-slate-900 p-2 rounded flex justify-between items-center text-sm';
+                    div.innerHTML = `
+                        <div>
+                            <p class="text-white font-medium">${item.name}</p>
+                            <p class="text-xs text-slate-400">${item.cartQty} x ₹${item.price}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-green-400 font-mono">₹${item.price * item.cartQty}</span>
+                            <button onclick="removeFromCart(${item.id})" class="text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+
+            const tax = (subtotal * gstRate) / 100;
+            const total = subtotal + tax;
+
+            document.getElementById('pos-subtotal').innerText = '₹' + subtotal.toLocaleString('en-IN');
+            document.getElementById('pos-gst-amount').innerText = '₹' + tax.toLocaleString('en-IN');
+            document.getElementById('pos-total').innerText = '₹' + total.toLocaleString('en-IN');
+        }
+
+        window.checkout = () => {
+            if(posCart.length === 0) return alert("Cart is empty!");
+            
+            const custPhone = document.getElementById('pos-customer-phone').value;
+            const custEmail = document.getElementById('pos-customer-email').value;
+            
+            if(!custPhone && !custEmail) {
+                alert("Please enter customer phone number OR email for the bill.");
+                return;
+            }
+
+            // Get payment method
+            const paymentMethod = document.getElementById('pos-payment-method').value;
+
+            if (paymentMethod === 'UPI') {
+                if(!upiId) {
+                    alert("Please setup your Shop UPI ID in settings first!");
+                    return;
+                }
+                
+                // Recalculate total with tax
+                const subtotal = posCart.reduce((sum, i) => sum + (i.price * i.cartQty), 0);
+                const tax = (subtotal * gstRate) / 100;
+                const total = subtotal + tax;
+                
+                // Show QR Modal
+                document.getElementById('qr-amount-display').innerText = '₹' + total.toLocaleString('en-IN');
+                document.getElementById('payment-qr-modal').classList.remove('hidden');
+                
+                // Generate QR
+                const qr = new QRious({
+                    element: document.getElementById('upi-qr-canvas'),
+                    value: `upi://pay?pa=${upiId}&pn=NimeshMotors&am=${total}&cu=INR`,
+                    size: 200,
+                    background: 'white',
+                    foreground: 'black'
+                });
+            } else if (paymentMethod === 'Card') {
+                const refNo = document.getElementById('pos-card-ref').value;
+                if(!refNo) {
+                    alert("Please enter the Transaction Reference Number from the card machine slip.");
+                    return;
+                }
+                finalizeSale();
+            } else {
+                finalizeSale();
+            }
+        }
+
+        window.closePaymentQrModal = () => {
+            document.getElementById('payment-qr-modal').classList.add('hidden');
+        }
+
+        window.finalizeSale = () => {
+            const paymentMethod = document.getElementById('pos-payment-method').value;
+            const custPhone = document.getElementById('pos-customer-phone').value;
+            const custEmail = document.getElementById('pos-customer-email').value;
+            const custName = document.getElementById('pos-customer-name').value || "Customer";
+            let paymentDetails = paymentMethod;
+
+            // Add Ref No if Card
+            if(paymentMethod === 'Card') {
+                const refNo = document.getElementById('pos-card-ref').value;
+                paymentDetails = `Card (Ref: ${refNo})`;
+            }
+
+            // --- Generate Invoice & Token ---
+            // 1. Token Logic: Count sales for TODAY
+            const todayStr = new Date().toLocaleDateString();
+            const dailySales = salesHistory.filter(s => new Date(s.date).toLocaleDateString() === todayStr);
+            const tokenNo = dailySales.length + 1;
+
+            // 2. Invoice Logic: Global Count (Sequential)
+            const globalCount = salesHistory.length + 1;
+            const year = new Date().getFullYear();
+            const invoiceNo = `INV-${year}-${globalCount.toString().padStart(4, '0')}`;
+
+            // Calculate Totals
+            const subtotal = posCart.reduce((sum, i) => sum + (i.price * i.cartQty), 0);
+            const tax = (subtotal * gstRate) / 100;
+            const total = subtotal + tax;
+
+            // Prepare Sale Object for History
+            const saleRecord = {
+                id: Date.now(),
+                date: new Date().toISOString(),
+                invoiceNo: invoiceNo,
+                tokenNo: tokenNo,
+                customerName: custName,
+                customerPhone: custPhone,
+                items: posCart.map(i => ({name: i.name, qty: i.cartQty, price: i.price})),
+                total: total,
+                paymentMethod: paymentDetails
+            };
+
+            // Save to History
+            salesHistory.push(saleRecord);
+            saveHistory();
+
+            // TRACK LOW STOCK TRIGGERS
+            // Update inventory & Check for Low Stock
+            posCart.forEach(cartItem => {
+                const inventoryItem = inventory.find(i => i.id === cartItem.id);
+                if(inventoryItem) {
+                    inventoryItem.quantity -= cartItem.cartQty;
+                    
+                    // Check if this specific sale caused stock to drop <= Limit
+                    if (inventoryItem.quantity <= lowLimit) {
+                        addToNotificationQueue(inventoryItem); // Add to Queue
+                    }
+                }
+            });
+
+            saveInventory();
+            renderTable();
+            updateStats();
+            
+            // Close modals
+            closePaymentQrModal();
+            closePosModal();
+
+            // --- BILL DISPATCH LOGIC ---
+            
+            const billText = generateBillText(saleRecord);
+
+            // 1. Send Email (if provided)
+            if (custEmail) {
+                const subject = encodeURIComponent(`Invoice ${saleRecord.invoiceNo} - NimeshMotors`);
+                const body = encodeURIComponent(billText);
+                window.open(`mailto:${custEmail}?subject=${subject}&body=${body}`);
+            }
+
+            // 2. Send WhatsApp/SMS (if phone provided AND no email sent OR user wants both)
+            // To prevent double popup blocking, we usually prefer one. 
+            // But if user provided phone, likely they want WA.
+            if (custPhone) {
+                const encodedBill = encodeURIComponent(billText);
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                const cleanPhone = custPhone.replace(/[^0-9]/g, '');
+                
+                // Small delay if email was also opened to try and bypass popup blocker
+                setTimeout(() => {
+                    if (isMobile) {
+                        window.open(`sms:${custPhone}?body=${encodedBill}`, '_blank');
+                    } else {
+                        window.open(`https://wa.me/${cleanPhone}?text=${encodedBill}`, '_blank');
+                    }
+                }, custEmail ? 1000 : 0);
+            }
+        }
+
+        // --- Analytics (Chart.js) ---
+        let categoryChart = null;
+        let valueChart = null;
+
+        window.openAnalyticsModal = () => {
+            document.getElementById('analytics-modal').classList.remove('hidden');
+            renderCharts();
+        }
+
+        window.closeAnalyticsModal = () => {
+            document.getElementById('analytics-modal').classList.add('hidden');
+        }
+
+        function renderCharts() {
+            // Data Prep
+            const categories = {};
+            const values = {};
+            
+            inventory.forEach(item => {
+                categories[item.category] = (categories[item.category] || 0) + item.quantity;
+                values[item.category] = (values[item.category] || 0) + (item.price * item.quantity);
+            });
+
+            const labels = Object.keys(categories);
+            const qtyData = Object.values(categories);
+            const valData = Object.values(values);
+
+            // Destroy old instances
+            if(categoryChart) categoryChart.destroy();
+            if(valueChart) valueChart.destroy();
+
+            // Qty Chart
+            const ctx1 = document.getElementById('chart-categories').getContext('2d');
+            categoryChart = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: qtyData,
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#cbd5e1' } }
+                    }
+                }
+            });
+
+            // Value Chart
+            const ctx2 = document.getElementById('chart-value').getContext('2d');
+            valueChart = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Value (₹)',
+                        data: valData,
+                        backgroundColor: '#10b981',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => '₹' + c.raw } } },
+                    scales: {
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // --- CSV Export Logic Update ---
+        window.exportCSV = () => {
+            if(inventory.length === 0) return alert("No data to export");
+
+            // Allow exporting Inventory OR Sales History
+            if(confirm("Click OK to export INVENTORY.\nClick Cancel to export SALES HISTORY.")) {
+                // Export Inventory
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "ID,Name,Company,Category,Quantity,Price\n";
+                inventory.forEach(item => {
+                    const row = [item.id, `"${item.name}"`, `"${item.company}"`, item.category, item.quantity, item.price].join(",");
+                    csvContent += row + "\n";
+                });
+                downloadCsv(csvContent, "nimesh_inventory.csv");
+            } else {
+                // Export History
+                if(salesHistory.length === 0) return alert("No sales history to export.");
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "Invoice,Token,Date,Customer,Phone,Items,Total,Payment\n";
+                salesHistory.forEach(sale => {
+                    const date = new Date(sale.date).toLocaleDateString();
+                    const items = sale.items.map(i => `${i.qty}x ${i.name}`).join('; ');
+                    const row = [sale.invoiceNo, sale.tokenNo, date, `"${sale.customerName}"`, sale.customerPhone, `"${items}"`, sale.total, sale.paymentMethod].join(",");
+                    csvContent += row + "\n";
+                });
+                downloadCsv(csvContent, "nimesh_sales_history.csv");
+            }
+        }
+
+        function downloadCsv(content, filename) {
+            const encodedUri = encodeURI(content);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- Time Format Logic ---
+        window.initTimeUI = () => {
+            setTimeFormat(timeFormat); // Set UI to correct mode
+            populateTimeSelects(); // Fill dropdowns
+        }
+
+        window.setTimeFormat = (format) => {
+            timeFormat = format;
+            const btn12 = document.getElementById('btn-12h');
+            const btn24 = document.getElementById('btn-24h');
+            const ampmContainer = document.getElementById('ampm-container');
+            
+            if (format === '12') {
+                btn12.className = "text-[10px] px-2 py-0.5 rounded transition bg-blue-600 text-white shadow-sm";
+                btn24.className = "text-[10px] px-2 py-0.5 rounded transition text-slate-400 hover:text-white";
+                ampmContainer.classList.remove('hidden');
+            } else {
+                btn24.className = "text-[10px] px-2 py-0.5 rounded transition bg-blue-600 text-white shadow-sm";
+                btn12.className = "text-[10px] px-2 py-0.5 rounded transition text-slate-400 hover:text-white";
+                ampmContainer.classList.add('hidden');
+            }
+            
+            // Repopulate hours based on format
+            populateHours();
+        }
+
+        function populateHours() {
+            const hourSelect = document.getElementById('time-hour');
+            hourSelect.innerHTML = '';
+            
+            if (timeFormat === '12') {
+                for (let i = 1; i <= 12; i++) {
+                    const val = i.toString().padStart(2, '0');
+                    const opt = document.createElement('option');
+                    opt.value = val;
+                    opt.innerText = val;
+                    hourSelect.appendChild(opt);
+                }
+            } else {
+                for (let i = 0; i < 24; i++) {
+                    const val = i.toString().padStart(2, '0');
+                    const opt = document.createElement('option');
+                    opt.value = val;
+                    opt.innerText = val;
+                    hourSelect.appendChild(opt);
+                }
+            }
+        }
+
+        function populateTimeSelects() {
+            // Minutes 00-59
+            const minSelect = document.getElementById('time-minute');
+            minSelect.innerHTML = '';
+            for (let i = 0; i < 60; i+=5) { // Step 5 for cleaner UI, can be 1
+                const val = i.toString().padStart(2, '0');
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.innerText = val;
+                minSelect.appendChild(opt);
+            }
+            // Add exact minute if existing
+            
+            // Set values if reportTime exists
+            if (reportTime) {
+                const [h24, m] = reportTime.split(':');
+                let h = parseInt(h24);
+                let ampm = 'AM';
+                
+                if (timeFormat === '12') {
+                    if (h >= 12) {
+                        ampm = 'PM';
+                        if (h > 12) h -= 12;
+                    }
+                    if (h === 0) h = 12;
+                    document.getElementById('time-ampm').value = ampm;
+                } else {
+                    h = h24; // Keep as string or int, select handles it
+                }
+
+                document.getElementById('time-hour').value = h.toString().padStart(2, '0');
+                
+                // Ensure minute exists in dropdown (if stepped) or add it
+                let minExists = false;
+                for(let opt of minSelect.options) {
+                    if(opt.value === m) minExists = true;
+                }
+                if(!minExists) {
+                    const opt = document.createElement('option');
+                    opt.value = m;
+                    opt.innerText = m;
+                    minSelect.add(opt);
+                    // Sort options
+                    const arr = Array.from(minSelect.options).sort((a,b) => a.value - b.value);
+                    minSelect.innerHTML = '';
+                    arr.forEach(o => minSelect.add(o));
+                }
+                document.getElementById('time-minute').value = m;
+            }
+        }
+
+        // --- Logo Management ---
+        function loadLogo() {
+            const savedLogo = localStorage.getItem('autoSpare_logo');
+            const logoContainer = document.getElementById('logo-container');
+            const defaultIcon = document.getElementById('default-logo-icon');
+            const shopLogo = document.getElementById('shop-logo');
+            const settingsPreview = document.getElementById('settings-logo-preview');
+
+            if (savedLogo) {
+                // Show logo, hide default icon
+                shopLogo.src = savedLogo;
+                logoContainer.classList.remove('hidden');
+                defaultIcon.classList.add('hidden');
+                
+                // Update settings preview
+                settingsPreview.innerHTML = `<img src="${savedLogo}" class="h-full w-full object-contain">`;
+            } else {
+                // Hide logo, show default icon
+                logoContainer.classList.add('hidden');
+                defaultIcon.classList.remove('hidden');
+            }
+        }
+
+        window.handleLogoUpload = (input) => {
+            const file = input.files[0];
+            if (!file) return;
+
+            // Check size (limit to 1MB to prevent localStorage quota issues)
+            if (file.size > 1024 * 1024) {
+                alert("File too large. Please choose a logo under 1MB.");
+                input.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const base64Image = e.target.result;
+                try {
+                    localStorage.setItem('autoSpare_logo', base64Image);
+                    loadLogo(); // Refresh UI immediately
+                } catch (err) {
+                    console.error("Storage failed", err);
+                    alert("Logo is too large to save. Try a smaller image.");
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // --- Logo Modal Functions ---
+        window.openLogoModal = () => {
+            const src = document.getElementById('shop-logo').src;
+            if(!src || document.getElementById('logo-container').classList.contains('hidden')) return;
+            
+            document.getElementById('modal-logo-img').src = src;
+            document.getElementById('logo-modal').classList.remove('hidden');
+        }
+
+        window.closeLogoModal = () => {
+            document.getElementById('logo-modal').classList.add('hidden');
+        }
+
+        // --- Inventory Functions ---
+        function loadInventory() {
+            const stored = localStorage.getItem('autoSpare_inventory');
+            if (stored) {
+                inventory = JSON.parse(stored);
+            } else {
+                inventory = initialData;
+                saveInventory();
+            }
+        }
+
+        function saveInventory() {
+            localStorage.setItem('autoSpare_inventory', JSON.stringify(inventory));
+            updateStats();
+        }
+
+        window.renderTable = (filterCategory = 'all', searchQuery = '') => {
+            const tbody = document.getElementById('inventory-table-body');
+            const emptyState = document.getElementById('empty-state');
+            tbody.innerHTML = '';
+
+            const filtered = inventory.filter(item => {
+                const matchCat = filterCategory === 'all' || item.category === filterCategory;
+                const searchLower = searchQuery.toLowerCase();
+                const matchSearch = item.name.toLowerCase().includes(searchLower) || 
+                                    item.company.toLowerCase().includes(searchLower);
+                return matchCat && matchSearch;
+            });
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            emptyState.classList.remove('flex');
+
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/50 transition border-b border-slate-700/50 last:border-0';
+                
+                // Logic for stock badge using configured lowLimit
+                let stockBadge = '';
+                if(item.quantity <= lowLimit) stockBadge = `<span class="px-2 py-1 rounded text-xs font-bold stock-badge-low">Low: ${item.quantity}</span>`;
+                else if(item.quantity <= (lowLimit * 2)) stockBadge = `<span class="px-2 py-1 rounded text-xs font-bold stock-badge-med">${item.quantity}</span>`;
+                else stockBadge = `<span class="px-2 py-1 rounded text-xs font-bold stock-badge-good">${item.quantity}</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-4 font-medium text-white">
+                        ${item.name}
+                    </td>
+                    <td class="p-4 text-slate-400">${item.company}</td>
+                    <td class="p-4"><span class="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs">${item.category}</span></td>
+                    <td class="p-4 text-center">${stockBadge}</td>
+                    <td class="p-4 text-right font-mono text-slate-300">₹${item.price.toLocaleString('en-IN')}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="editItem(${item.id})" class="text-blue-400 hover:text-blue-300 mr-3"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteItem(${item.id})" class="text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateStats() {
+            const totalItems = inventory.length;
+            const lowStock = inventory.filter(i => i.quantity <= lowLimit).length;
+            const totalValue = inventory.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+
+            document.getElementById('stat-total').innerText = totalItems;
+            document.getElementById('stat-low').innerText = lowStock;
+            document.getElementById('stat-value').innerText = '₹' + totalValue.toLocaleString('en-IN', {maximumFractionDigits: 0});
+        }
+
+        // --- Alert System ---
+        window.sendLowStockAlert = () => {
+            if(!ownerPhone) {
+                alert("Please add your phone number in Settings first.");
+                toggleSettings();
+                return;
+            }
+
+            const lowItems = inventory.filter(i => i.quantity <= lowLimit);
+            if(lowItems.length === 0) {
+                alert("Good news! No items are below your low limit (" + lowLimit + ").");
+                return;
+            }
+
+            // Construct message
+            let msg = `⚠️ *Low Stock Alert (<${lowLimit})* ⚠️\nThe following items need restocking:\n\n`;
+            lowItems.forEach(item => {
+                msg += `• ${item.name} (${item.company}): ${item.quantity} left\n`;
+            });
+            msg += `\nPlease order soon.`;
+
+            const encodedMsg = encodeURIComponent(msg);
+            
+            // Detect if mobile to use SMS, otherwise WhatsApp Web
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                 // Try SMS first on mobile
+                 window.open(`sms:${ownerPhone}?body=${encodedMsg}`, '_blank');
+            } else {
+                 // WhatsApp Web fallback for desktop
+                 window.open(`https://wa.me/${ownerPhone.replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
+            }
+        }
+
+        // --- Auto Trigger Logic ---
+        function checkAndTriggerAutoAlert(item) {
+            if (item.quantity <= lowLimit) {
+                // Trigger AI visual
+                const aiPanel = document.getElementById('ai-panel');
+                aiPanel.classList.add('ai-action-active');
+                
+                addChatMessage('ai', `⚠️ **Auto-Alert Triggered**\nItem "${item.name}" is at ${item.quantity} (Limit: ${lowLimit}). Sending report to owner...`);
+                
+                // Delay to allow user to see message before popup
+                setTimeout(() => {
+                    sendLowStockAlert();
+                    aiPanel.classList.remove('ai-action-active');
+                }, 2000);
+            }
+        }
+
+        // --- Scheduled Report Logic ---
+        function checkScheduledReport() {
+            if (!reportTime) return;
+
+            const now = new Date();
+            const currentHours = now.getHours().toString().padStart(2, '0');
+            const currentMinutes = now.getMinutes().toString().padStart(2, '0');
+            const currentTimeStr = `${currentHours}:${currentMinutes}`;
+            
+            const todayStr = now.toDateString();
+            const lastSent = localStorage.getItem('autoSpare_lastReportDate');
+
+            // If time matches AND we haven't sent today
+            if (currentTimeStr === reportTime && lastSent !== todayStr) {
+                // VISUAL FEEDBACK FOR AUTO-SEND
+                const statusDiv = document.createElement('div');
+                statusDiv.className = 'fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-3 rounded-lg shadow-xl slide-in flex items-center gap-2';
+                statusDiv.innerHTML = '<i class="fa-brands fa-whatsapp text-lg"></i> <div><strong>Auto-Sending Report...</strong><p class="text-xs text-green-100">Opening WhatsApp</p></div>';
+                document.body.appendChild(statusDiv);
+                
+                // Remove banner after 3 seconds
+                setTimeout(() => statusDiv.remove(), 3000);
+
+                // DIRECTLY SEND (Since user allowed popups)
+                sendScheduledReport();
+            }
+        }
+
+        window.sendScheduledReport = () => {
+            // Update Last Sent Date immediately to prevent loop
+            const now = new Date();
+            localStorage.setItem('autoSpare_lastReportDate', now.toDateString());
+            
+            // Prepare Report
+            // A daily report might include total value and low stock
+            const totalValue = inventory.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+            const lowItems = inventory.filter(i => i.quantity <= lowLimit);
+            
+            let msg = `📋 *Daily Inventory Report* 📅\n${now.toLocaleDateString()}\n\n`;
+            msg += `💰 Total Value: ₹${totalValue.toLocaleString('en-IN')}\n`;
+            msg += `📉 Low Stock Items: ${lowItems.length}\n\n`;
+            
+            if (lowItems.length > 0) {
+                msg += `*Items to Restock:*\n`;
+                lowItems.forEach(item => {
+                    msg += `• ${item.name}: ${item.quantity}\n`;
+                });
+            } else {
+                msg += `✅ All stock levels are good!\n`;
+            }
+
+            const encodedMsg = encodeURIComponent(msg);
+            
+            // Detect if mobile to use SMS, otherwise WhatsApp Web
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            if (isMobile && ownerPhone) {
+                 window.open(`sms:${ownerPhone}?body=${encodedMsg}`, '_blank');
+            } else if (ownerPhone) {
+                 window.open(`https://wa.me/${ownerPhone.replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
+            } else {
+                // If phone missing, show error but don't crash
+                console.error("Auto-send failed: No phone number");
+            }
+
+            dismissScheduledAlert();
+        }
+
+        window.dismissScheduledAlert = () => {
+            document.getElementById('scheduled-alert').classList.add('hidden');
+        }
+
+        // --- CRUD Operations ---
+        window.handleFormSubmit = (e) => {
+            e.preventDefault();
+            const id = document.getElementById('item-id').value;
+            const name = document.getElementById('inp-name').value;
+            const company = document.getElementById('inp-company').value;
+            const category = document.getElementById('inp-category').value;
+            const quantity = parseInt(document.getElementById('inp-quantity').value);
+            const price = parseFloat(document.getElementById('inp-price').value);
+
+            let currentItem;
+
+            if (id) {
+                // Edit
+                const index = inventory.findIndex(i => i.id == id);
+                if (index !== -1) {
+                    inventory[index] = { id: parseInt(id), name, company, category, quantity, price };
+                    currentItem = inventory[index];
+                }
+            } else {
+                // Add
+                const newId = inventory.length > 0 ? Math.max(...inventory.map(i => i.id)) + 1 : 1;
+                currentItem = { id: newId, name, company, category, quantity, price };
+                inventory.push(currentItem);
+            }
+
+            saveInventory();
+            renderTable();
+            closeModal();
+
+            // CHECK FOR AUTO ALERT
+            if(currentItem) {
+                checkAndTriggerAutoAlert(currentItem);
+            }
+        }
+
+        window.deleteItem = (id) => {
+            if(confirm('Are you sure you want to remove this part?')) {
+                inventory = inventory.filter(i => i.id !== id);
+                saveInventory();
+                renderTable();
+            }
+        }
+
+        window.editItem = (id) => {
+            const item = inventory.find(i => i.id === id);
+            if (!item) return;
+
+            document.getElementById('item-id').value = item.id;
+            document.getElementById('inp-name').value = item.name;
+            document.getElementById('inp-company').value = item.company;
+            document.getElementById('inp-category').value = item.category;
+            document.getElementById('inp-quantity').value = item.quantity;
+            document.getElementById('inp-price').value = item.price;
+            
+            document.getElementById('modal-title').innerText = "Edit Part";
+            document.getElementById('item-modal').classList.remove('hidden');
+        }
+
+        // --- UI Interactions ---
+        window.openAddModal = () => {
+            document.getElementById('item-form').reset();
+            document.getElementById('item-id').value = '';
+            document.getElementById('modal-title').innerText = "Add New Part";
+            document.getElementById('item-modal').classList.remove('hidden');
+        }
+
+        window.closeModal = () => {
+            document.getElementById('item-modal').classList.add('hidden');
+        }
+
+        window.toggleSettings = () => {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        window.toggleKeyVisibility = () => {
+            const input = document.getElementById('api-key-input');
+            const icon = document.getElementById('eye-icon');
+            if(input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        window.saveSettings = () => {
+            const key = document.getElementById('api-key-input').value.trim();
+            const phone = document.getElementById('phone-input').value.trim();
+            const upi = document.getElementById('upi-id-input').value.trim();
+            const limit = parseInt(document.getElementById('low-limit-input').value);
+            const gst = parseFloat(document.getElementById('gst-rate-input').value) || 0;
+            
+            // Construct time string from picker
+            const h = document.getElementById('time-hour').value;
+            const m = document.getElementById('time-minute').value;
+            let time = '';
+            
+            if (timeFormat === '12') {
+                const ampm = document.getElementById('time-ampm').value;
+                let hInt = parseInt(h);
+                if (ampm === 'PM' && hInt < 12) hInt += 12;
+                if (ampm === 'AM' && hInt === 12) hInt = 0;
+                time = `${hInt.toString().padStart(2, '0')}:${m}`;
+            } else {
+                time = `${h}:${m}`;
+            }
+            
+            localStorage.setItem('autoSpare_geminiKey', key);
+            localStorage.setItem('autoSpare_phone', phone);
+            localStorage.setItem('autoSpare_upiId', upi);
+            localStorage.setItem('autoSpare_lowLimit', limit || 5);
+            localStorage.setItem('autoSpare_gstRate', gst);
+            localStorage.setItem('autoSpare_reportTime', time);
+            localStorage.setItem('autoSpare_timeFormat', timeFormat);
+            
+            geminiKey = key;
+            ownerPhone = phone;
+            upiId = upi;
+            lowLimit = limit || 5;
+            gstRate = gst;
+            reportTime = time;
+            
+            alert('Settings Saved!');
+            updateStats();
+            renderTable();
+            toggleSettings();
+        }
+
+        // --- Backup & Restore Functions ---
+        window.exportData = () => {
+            const dataStr = JSON.stringify(inventory, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `inventory_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        window.triggerImport = () => {
+            if(confirm("Warning: Importing a backup will REPLACE your current inventory. Continue?")) {
+                document.getElementById('import-file').click();
+            }
+        }
+
+        window.importData = (input) => {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (Array.isArray(data)) {
+                        inventory = data;
+                        saveInventory();
+                        renderTable();
+                        alert("Backup restored successfully!");
+                        toggleSettings();
+                    } else {
+                        alert("Invalid backup file format.");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("Error reading file.");
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; // Reset input
+        }
+
+        window.switchAiTab = (tab) => {
+            document.getElementById('tab-chat').className = tab === 'chat' ? 
+                'flex-1 py-1.5 text-sm rounded-md bg-slate-700 text-white shadow-sm transition' : 
+                'flex-1 py-1.5 text-sm rounded-md text-slate-400 hover:text-white transition';
+            
+            document.getElementById('tab-add').className = tab === 'add' ? 
+                'flex-1 py-1.5 text-sm rounded-md bg-slate-700 text-white shadow-sm transition' : 
+                'flex-1 py-1.5 text-sm rounded-md text-slate-400 hover:text-white transition';
+
+            document.getElementById('ai-view-chat').classList.toggle('hidden', tab !== 'chat');
+            document.getElementById('ai-view-add').classList.toggle('hidden', tab !== 'add');
+        }
+
+        // --- Search Listeners ---
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            renderTable(document.getElementById('category-filter').value, e.target.value);
+        });
+
+        document.getElementById('category-filter').addEventListener('change', (e) => {
+            renderTable(e.target.value, document.getElementById('search-input').value);
+        });
+
+        // --- GEMINI AI INTEGRATION ---
+        
+        async function getGenAI() {
+            if (!geminiKey) {
+                alert("Please set your API Key in settings first!");
+                return null;
+            }
+            return new GoogleGenerativeAI(geminiKey);
+        }
+
+        window.handleChatEnter = (e) => {
+            if(e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChat();
+            }
+        }
+
+        window.setPrompt = (text) => {
+            document.getElementById('chat-input').value = text;
+        }
+
+        window.sendChat = async () => {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if(!message) return;
+
+            // Add user message to UI
+            addChatMessage('user', message);
+            input.value = '';
+
+            const genAI = await getGenAI();
+            if(!genAI) return;
+
+            addChatMessage('ai', 'Thinking...', true); // Loading state
+
+            try {
+                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-09-2025" });
+                
+                // Context about inventory
+                const inventoryContext = JSON.stringify(inventory.map(i => `${i.quantity}x ${i.company} ${i.name} (₹${i.price})`));
+                const prompt = `
+                    You are a helpful inventory assistant for an Indian auto spare parts shop. 
+                    Here is the current inventory data: ${inventoryContext}. 
+                    Currency is Indian Rupees (₹).
+                    Low stock limit is set to: ${lowLimit}.
+                    
+                    User question: "${message}"
+                    
+                    Instructions:
+                    1. Answer briefly.
+                    2. If the user explicitly asks to "Send message", "Send report", "Alert owner", or "Send to phone", OR if you think an alert is urgently needed and the user agrees, append exactly this string at the very end of your response: [ACTION:SEND_ALERT]
+                    3. Do not include the action string if the user is just asking for info.
+                `;
+
+                const result = await model.generateContent(prompt);
+                const response = await result.response;
+                let text = response.text();
+
+                removeLoadingMessage();
+                
+                // Check for Action Trigger
+                if (text.includes('[ACTION:SEND_ALERT]')) {
+                    text = text.replace('[ACTION:SEND_ALERT]', '');
+                    addChatMessage('ai', text);
+                    
+                    // Visual feedback for automation
+                    const aiPanel = document.getElementById('ai-panel');
+                    aiPanel.classList.add('ai-action-active');
+                    
+                    const statusDiv = document.createElement('div');
+                    statusDiv.className = 'bg-purple-900/50 text-purple-200 text-xs p-2 rounded mb-2 border border-purple-500/30 flex items-center gap-2';
+                    statusDiv.innerHTML = '<i class="fa-solid fa-bolt"></i> AI Automation: Triggering Alert System...';
+                    document.getElementById('chat-history').appendChild(statusDiv);
+
+                    // Execute Automation
+                    setTimeout(() => {
+                        sendLowStockAlert();
+                        aiPanel.classList.remove('ai-action-active');
+                    }, 1500);
+                } else {
+                    addChatMessage('ai', text);
+                }
+
+            } catch (error) {
+                console.error(error);
+                removeLoadingMessage();
+                addChatMessage('ai', 'Error connecting to Gemini. Check your API key.');
+            }
+        }
+
+        function addChatMessage(role, text, isLoading = false) {
+            const history = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.className = role === 'user' ? 'bg-blue-600 ml-auto text-white' : 'bg-slate-800 border border-slate-700 text-slate-200';
+            div.className += ' p-3 rounded-xl max-w-[85%] mb-2 text-sm';
+            if (role === 'user') div.classList.add('rounded-tr-none');
+            else div.classList.add('rounded-tl-none');
+            
+            if(isLoading) div.id = 'ai-loading';
+            
+            div.innerText = text;
+            history.appendChild(div);
+            history.scrollTop = history.scrollHeight;
+        }
+
+        function removeLoadingMessage() {
+            const loading = document.getElementById('ai-loading');
+            if(loading) loading.remove();
+        }
+
+        window.processMagicAdd = async () => {
+            const input = document.getElementById('magic-input');
+            const text = input.value.trim();
+            if(!text) return;
+
+            const btn = document.getElementById('magic-btn');
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+
+            const genAI = await getGenAI();
+            if(!genAI) {
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
+                return;
+            }
+
+            try {
+                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-09-2025" });
+                
+                const prompt = `
+                    Extract auto part inventory data from this text: "${text}"
+                    Return ONLY a valid JSON object (no markdown, no backticks).
+                    Fields required: name (string), company (string), category (one of: Brakes, Engine, Suspension, Electrical, Body, Fluids, Other), quantity (number), price (number).
+                    Context: Currency is Indian Rupees (₹).
+                    If a field is missing, make a logical guess or set price to 0.
+                    Example format: {"name": "Brake Pad", "company": "Bosch", "category": "Brakes", "quantity": 10, "price": 500}
+                `;
+
+                const result = await model.generateContent(prompt);
+                const response = await result.response;
+                const cleanText = response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+                const data = JSON.parse(cleanText);
+
+                // Add to inventory
+                const newId = inventory.length > 0 ? Math.max(...inventory.map(i => i.id)) + 1 : 1;
+                const newItem = { id: newId, ...data };
+                inventory.push(newItem);
+                saveInventory();
+                renderTable();
+                
+                input.value = '';
+                alert(`Successfully added: ${data.company} ${data.name}`);
+                switchAiTab('chat'); // Switch back to see update
+
+                // Auto Trigger Check
+                checkAndTriggerAutoAlert(newItem);
+
+            } catch (error) {
+                console.error(error);
+                alert('Failed to parse text. Please try again.');
+            } finally {
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
+            }
+        }
+    </script>
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+          new google.translate.TranslateElement({
+            pageLanguage: 'en', 
+            layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+            autoDisplay: false
+          }, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</body>
+</html>
